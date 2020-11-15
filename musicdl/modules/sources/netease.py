@@ -64,7 +64,7 @@ class netease(Base):
 
     def download_album(self, albumId):
         cfg = self.config.copy()
-        url = "http://music.163.com/api/v1/album/%d" % albumId
+        url = "http://music.163.com/api/v1/album/" + str(albumId)
         params = {
             'total': 'true',
             'offset': '0',
