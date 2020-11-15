@@ -18,79 +18,145 @@ class qq(Base):
         super(qq, self).__init__(config, logger_handle, **kwargs)
         self.source = 'qq'
         self.__initialize()
+
+    def get_albuminfo(self, albummid):
+        params = {
+            'albummid': albummid,
+            'platform': 'mac',
+            'format': 'json',
+            'newsong': 1
+        }
+        response = self.session.get(self.album_url, headers=self.ios_headers, params=params)
+        data = response.json()
+        return data['data']
+
+    def download_album(self, albummid):
+        cfg = self.config.copy()
+        data = self.get_albuminfo(albummid)
+        album = data['getAlbumInfo']['Falbum_name']
+        total = len(data['getSongInfo'])
+        for item in data['getSongInfo']:
+            artists = ','.join([s['name'] for s in item['singer']])
+            songname = item.get('name')
+            songmid = item.get('mid')
+            track = item.get('index_album', 1)
+            ext = ''
+            download_url = ''
+            filesize = 0
+            duration = int(item.get('interval', 0))
+
+            info = self.get_songinfo(songmid)
+            if not info:
+                self.logger_handle.info('%s 无可用下载链接： %s - %s' % (self.source, artists, songname))
+                continue
+
+            songinfo = {
+                'source': self.source,
+                'songid': songmid,
+                'track': track,
+                'total': total,
+                'singers': filterBadCharacter(artists),
+                'album': filterBadCharacter(album),
+                'cover_url': 'https://y.gtimg.cn/music/photo_new/T002R300x300M000%s.jpg?max_age=2592000' % albummid,
+                'songname': filterBadCharacter(songname),
+                'savedir': cfg['savedir'],
+                'savename': '%02d-%s - %s' % (track, filterBadCharacter(artists), filterBadCharacter(songname)),
+                'duration': seconds2hms(duration)
+            }
+            songinfo.update(info)
+            self.download([songinfo])
+
+        #getSongInfo
+    def get_songinfo(self, songmid):
+        url = 'https://c.y.qq.com/v8/fcg-bin/fcg_play_single_song.fcg'
+        params = {'songmid': songmid, 'platform': 'yqq', 'format': 'json'}
+        r = self.session.get(url, headers=self.headers, params=params)
+        data = r.json()
+        brs = [
+            ('size_320mp3', 320, 'M800', 'mp3'),
+            ('size_192aac', 192, 'C600', 'm4a'),
+            ('size_128mp3', 128, 'M500', 'mp3')
+        ]
+        p = {'req_0': {
+            'module': 'vkey.GetVkeyServer',
+            'method': 'CgiGetVkey',
+            'param': {
+                'guid': str(random.randrange(1000000000, 10000000000)),
+                'songmid': [],
+                'filename': [],
+                'songtype': [],
+                'uin': '0',
+                'loginflag': 1,
+                'platform': '20',
+             }}}
+        for vo in brs:
+            p['req_0']['param']['songmid'].append(data['data'][0]['mid'])
+            p['req_0']['param']['filename'].append(vo[2] + data['data'][0]['file']['media_mid'] + '.' + vo[3])
+            p['req_0']['param']['songtype'].append(data['data'][0]['type'])
+        r = self.session.get('https://u.y.qq.com/cgi-bin/musicu.fcg', headers=self.headers,
+                params={ 'format': 'json', 'platform': 'yqq.json', 'needNewCode': 0, 'data': json.dumps(p)})
+        r = r.json()
+
+        for idx, songinfo in enumerate(r['req_0']['data']['midurlinfo']):
+            if songinfo['purl']:
+                download_url = r['req_0']['data']['sip'][0] + songinfo['purl']
+                filesize = data['data'][0]['file'][brs[idx][0]]
+                ext = brs[idx][0][-3:]
+
+                songinfo = {
+                    'download_url': download_url,
+                    'filesize': str(filesize),
+                    'ext': ext
+                }
+                return songinfo
+        return None
+
+
     '''歌曲搜索'''
     def search(self, keyword):
         self.logger_handle.info('正在%s中搜索 ——> %s' % (self.source, keyword))
         cfg = self.config.copy()
         params = {
-                    'w': keyword,
-                    'format': 'json',
-                    'p': '1',
-                    'n': cfg['search_size_per_source']
-                }
+            'w': keyword,
+            'format': 'json',
+            'p': '1',
+            'n': cfg['search_size_per_source']
+        }
         response = self.session.get(self.search_url, headers=self.headers, params=params)
         all_items = response.json()['data']['song']['list']
         songinfos = []
         for item in all_items:
-            params = {
-                        'guid': str(random.randrange(1000000000, 10000000000)),
-                        'loginUin': '3051522991',
-                        'format': 'json',
-                        'platform': 'yqq',
-                        'cid': '205361747',
-                        'uin': '3051522991',
-                        'songmid': item['songmid'],
-                        'needNewCode': '0'
-                    }
+            artists = ','.join([s.get('name', '') for s in item.get('singer', [])])
+            albumName = item.get('albumname', '-')
+            songName = item.get('songname', '-')
+            albummid = item.get('albummid')
+            songmid = item.get('songmid')
+            duration = int(item.get('interval', 0))
             ext = ''
             download_url = ''
-            filesize = '-MB'
-            for quality in [("A000", "ape", 800), ("F000", "flac", 800), ("M800", "mp3", 320), ("C400", "m4a", 128), ("M500", "mp3", 128)]:
-                params['filename'] = '%s%s.%s' % (quality[0], item['songmid'], quality[1])
-                response = self.session.get(self.mobile_fcg_url, headers=self.ios_headers, params=params)
-                response_json = response.json()
-                if response_json['code'] != 0: continue
-                vkey = response_json.get('data', {}).get('items', [{}])[0].get('vkey', '')
-                if vkey:
-                    ext = quality[1]
-                    download_url = 'http://dl.stream.qqmusic.qq.com/{}?vkey={}&guid={}&uin=3051522991&fromtag=64'.format('%s%s.%s' % (quality[0], item['songmid'], quality[1]), vkey, params['guid'])
-                    if ext in ['ape', 'flac']:
-                        filesize = item['size%s' % ext]
-                    elif ext in ['mp3', 'm4a']:
-                        filesize = item['size%s' % quality[-1]]
-                    break
-            if not download_url:
-                params = {
-                            'data': json.dumps({
-                                                "req": {"module": "CDN.SrfCdnDispatchServer", "method": "GetCdnDispatch", "param": {"guid": "3982823384", "calltype": 0, "userip": ""}},
-                                                "req_0": {"module": "vkey.GetVkeyServer", "method": "CgiGetVkey", "param": {"guid": "3982823384", "songmid": [item['songmid']], "songtype": [0], "uin": "0", "loginflag": 1, "platform": "20"}},
-                                                "comm": {"uin": 0, "format": "json", "ct": 24, "cv": 0}
-                                            })
-                        }
-                response = self.session.get(self.fcg_url, headers=self.ios_headers, params=params)
-                response_json = response.json()
-                if response_json['code'] == 0 and response_json['req']['code'] == 0 and response_json['req_0']['code'] == 0:
-                    ext = '.m4a'
-                    download_url = str(response_json["req"]["data"]["freeflowsip"][0]) + str(response_json["req_0"]["data"]["midurlinfo"][0]["purl"])
-                    filesize = item['size128']
-            if (not download_url) or (filesize == '-MB') or (filesize == 0): continue
-            filesize = str(round(filesize/1024/1024, 2)) + 'MB'
-            duration = int(item.get('interval', 0))
+            filesize = 0
+
+            info = self.get_songinfo(songmid)
+            if not info:
+                continue
+
             songinfo = {
-                        'source': self.source,
-                        'songid': str(item['songmid']),
-                        'singers': filterBadCharacter(','.join([s.get('name', '') for s in item.get('singer', [])])),
-                        'album': filterBadCharacter(item.get('albumname', '-')),
-                        'songname': filterBadCharacter(item.get('songname', '-')),
-                        'savedir': cfg['savedir'],
-                        'savename': '_'.join([self.source, filterBadCharacter(item.get('songname', '-'))]),
-                        'download_url': download_url,
-                        'filesize': filesize,
-                        'ext': ext,
-                        'duration': seconds2hms(duration)
-                    }
+                'source': self.source,
+                'songid': songmid,
+                'track': item.get('cdIdx', 1),
+                'total': item.get('cdIdx', 1),
+                'singers': artists,
+                'album': albumName,
+                'cover_url': 'https://y.gtimg.cn/music/photo_new/T002R300x300M000%s.jpg?max_age=2592000' % albummid,
+                'songname': songName,
+                'savedir': cfg['savedir'],
+                'savename': ' - '.join([filterBadCharacter(artists), filterBadCharacter(songName)]),
+                'duration': seconds2hms(duration)
+            }
+            songinfo.update(info)
             songinfos.append(songinfo)
         return songinfos
+
     '''初始化'''
     def __initialize(self):
         self.ios_headers = {
@@ -103,4 +169,5 @@ class qq(Base):
                     }
         self.search_url = 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp'
         self.mobile_fcg_url = 'https://c.y.qq.com/base/fcgi-bin/fcg_music_express_mobile3.fcg'
+        self.album_url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_album_detail_cp.fcg'
         self.fcg_url = 'https://u.y.qq.com/cgi-bin/musicu.fcg'

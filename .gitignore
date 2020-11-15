@@ -1,4 +1,4 @@
 .DS_Store
 downloaded
-musicdl/musicdl.log 
+*.log
 __pycache__

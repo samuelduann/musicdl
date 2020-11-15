@@ -57,7 +57,7 @@ class xiami(Base):
                 if item['filesize'] == 0 or int(fileInfo['fileSize']) > item['filesize']:
                     item['songid'] = songId
                     item['download_url'] = fileInfo['listenFile']
-                    item['filesize'] = fileInfo['fileSize']
+                    item['filesize'] = int(fileInfo['fileSize'])
                     item['duration'] = seconds2hms(int(fileInfo['length'])/1000)
             self.download([item])
 

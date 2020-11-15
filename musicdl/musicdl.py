@@ -38,7 +38,7 @@ class musicdl():
             # 音乐搜索
             user_input = self.dealInput('请输入歌曲搜索的关键词: ')
             target_srcs = ['baiduFlac', 'kugou', 'kuwo', 'qq', 'qianqian', 'netease', 'migu', 'xiami', 'joox'] if target_srcs is None else target_srcs
-            target_srcs = ['netease','xiami','qq']
+            target_srcs = ['qq']
             search_results = self.search(user_input, target_srcs)
             # 打印搜索结果
             title = ['序号', '歌手', '歌名', '大小', '时长', '专辑', '来源']
@@ -96,6 +96,7 @@ class musicdl():
             try:
                 search_results.update({'qq': self.qq.search(keyword)})
             except Exception as err:
+                raise err
                 self.logger_handle.error(str(err), True)
                 self.logger_handle.warning('无法在%s中搜索 ——> %s' % ('qq', keyword))
         if 'migu' in target_srcs:
@@ -165,6 +166,9 @@ class musicdl():
 '''run'''
 if __name__ == '__main__':
     dl_client = musicdl('config.json')
-    dl_client.run() # interactive mode
-    #dl_client.xiami.download_album(169689)
-    #dl_client.netease.download_album(72393371)
+    if len(sys.argv) == 3:
+        # download album, args: [xiami|qq|netease] [albumId]
+        # example: python musicdl.py xiami 111111
+        getattr(dl_client, sys.argv[1]).download_album(sys.argv[2])
+    else:
+        dl_client.run() # interactive mode

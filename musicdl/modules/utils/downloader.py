@@ -50,8 +50,30 @@ class Downloader():
                     is_success = True
             # ensure there's ID3 tag in mp3 file
             if filename.endswith('mp3'):
+                from mutagen.mp3 import MP3
+                from mutagen.id3 import TPE1, TALB, TIT2, TRCK, APIC
+
+                mp3 = MP3(filename, v2_version=3)
+                try:
+                    mp3.add_tags()
+                except:
+                    pass
+
+                mp3.tags['TPE1'] = TPE1(encoding=3, text=songinfo['singers'])
+                mp3.tags['TALB'] = TALB(encoding=3, text=songinfo['album'])
+                mp3.tags['TIT2'] = TIT2(encoding=3, text=songinfo['songname'])
+                mp3.tags['TRCK'] = TRCK(encoding=3, text=str(songinfo['track']))
+                mp3.tags.add(APIC(
+                        encoding=3,
+                        mime='image/jpeg',
+                        type=3,
+                        desc='Cover',
+                        data=open(cover_file, 'rb').read()
+                ))
+                mp3.save(v2_version=3)
+            if filename.endswith('m4a'):
                 os.system("ffmpeg -i \"%s\" -i \"%s\" -map 0:0 -map 1:0 -metadata album=\"%s\" -metadata artist=\"%s\" -metadata title=\"%s\" -metadata track=\"%d/%d\" \"%s\"" %\
-                        (filename, cover_file, songinfo['album'], songinfo['singers'], songinfo['songname'], songinfo['track'], songinfo['total'], os.path.join(songinfo['savedir'], 'output', songinfo['savename']+'.'+songinfo['ext'])))
+                        (filename, cover_file, songinfo['album'], songinfo['singers'], songinfo['songname'], songinfo['track'], songinfo['total'], os.path.join(songinfo['savedir'], 'output', songinfo['savename']+'.mp3')))
         except Exception as e:
             print(e)
             is_success = False
