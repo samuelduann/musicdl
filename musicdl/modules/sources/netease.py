@@ -78,6 +78,7 @@ class netease(Base):
         for item in data['songs']:
             if item['privilege']['fl'] == 0: continue
             for q in ['h', 'm', 'l']:
+                if not item.get(q, None): continue
                 params = {
                             'ids': [item['id']],
                             'br': item[q]['br'],
@@ -129,6 +130,7 @@ class netease(Base):
         for item in all_items:
             if item['privilege']['fl'] == 0: continue
             for q in ['h', 'm', 'l']:
+                if not item.get(q, None): continue
                 params = {
                             'ids': [item['id']],
                             'br': item[q]['br'],
@@ -144,17 +146,19 @@ class netease(Base):
             filesize = int(item[q]['size'])
             ext = download_url.split('.')[-1]
             duration = int(item.get('dt', 0) / 1000)
+            artists = ','.join([s.get('name', '') for s in item.get('ar')])
+            songname = item.get('name', '-')
             songinfo = {
                         'source': self.source,
                         'songid': str(item['id']),
                         'track': item['no'],
                         'total': item['no'],
-                        'singers': filterBadCharacter(','.join([s.get('name', '') for s in item.get('ar')])),
+                        'singers': artists,
                         'album': filterBadCharacter(item.get('al', {}).get('name', '-')),
                         'cover_url': item['al']['picUrl'],
-                        'songname': filterBadCharacter(item.get('name', '-')),
+                        'songname': songname,
                         'savedir': cfg['savedir'],
-                        'savename': '_'.join([self.source, filterBadCharacter(item.get('name', '-'))]),
+                        'savename': '%s - %s' % (filterBadCharacter(artists), filterBadCharacter(songname)),
                         'download_url': download_url,
                         'filesize': str(filesize),
                         'ext': ext,

@@ -49,9 +49,7 @@ class Downloader():
                                     progressbar.update(chunk_size)
                     is_success = True
             # ensure there's ID3 tag in mp3 file
-            if filename.endswith('mp3') or filename.endswith('m4a'):
-                print(cover_file, "--------------")
-                # ffmpeg -i track12.mp3 -metadata album="Closer" -metadata artist="Josh Groban" You\ Raise\ Me\ Up.mp3
+            if filename.endswith('mp3'):
                 os.system("ffmpeg -i \"%s\" -i \"%s\" -map 0:0 -map 1:0 -metadata album=\"%s\" -metadata artist=\"%s\" -metadata title=\"%s\" -metadata track=\"%d/%d\" \"%s\"" %\
                         (filename, cover_file, songinfo['album'], songinfo['singers'], songinfo['songname'], songinfo['track'], songinfo['total'], os.path.join(songinfo['savedir'], 'output', songinfo['savename']+'.'+songinfo['ext'])))
         except Exception as e:
