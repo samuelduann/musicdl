@@ -38,7 +38,7 @@ class musicdl():
             # 音乐搜索
             user_input = self.dealInput('请输入歌曲搜索的关键词: ')
             target_srcs = ['baiduFlac', 'kugou', 'kuwo', 'qq', 'qianqian', 'netease', 'migu', 'xiami', 'joox'] if target_srcs is None else target_srcs
-            target_srcs = ['qq','xiami',]
+            target_srcs = ['netease', 'xiami', 'qq']
             search_results = self.search(user_input, target_srcs)
             # 打印搜索结果
             title = ['序号', '歌手', '歌名', '大小', '时长', '专辑', '来源']

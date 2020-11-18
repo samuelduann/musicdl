@@ -10,6 +10,7 @@ import random
 import requests
 from .base import Base
 from ..utils.misc import *
+import os
 
 
 '''QQ音乐下载类'''
@@ -30,11 +31,12 @@ class qq(Base):
         data = response.json()
         return data['data']
 
-    def download_album(self, albummid):
+    def _get_album_songs(self, albummid):
         cfg = self.config.copy()
         data = self.get_albuminfo(albummid)
         album = data['getAlbumInfo']['Falbum_name']
         total = len(data['getSongInfo'])
+        songinfos = []
         for item in data['getSongInfo']:
             artists = ','.join([s['name'] for s in item['singer']])
             songname = item.get('name')
@@ -59,12 +61,13 @@ class qq(Base):
                 'album': filterBadCharacter(album),
                 'cover_url': 'https://y.gtimg.cn/music/photo_new/T002R300x300M000%s.jpg?max_age=2592000' % albummid,
                 'songname': filterBadCharacter(songname),
-                'savedir': cfg['savedir'],
+                'savedir': os.path.join(cfg['savedir'], filterBadCharacter(artists) + ' - ' + filterBadCharacter(album)),
                 'savename': '%02d-%s - %s' % (track, filterBadCharacter(artists), filterBadCharacter(songname)),
                 'duration': seconds2hms(duration)
             }
             songinfo.update(info)
-            self.download([songinfo])
+            songinfos.append(songinfo)
+        return songinfos
 
         #getSongInfo
     def get_songinfo(self, songmid):

@@ -23,9 +23,12 @@ class Downloader():
     '''外部调用'''
     def start(self):
         songinfo, session, headers = self.songinfo, self.session, self.headers
+        filename = os.path.join(songinfo['savedir'], songinfo['savename']+'.'+songinfo['ext'])
         cover_file = None
         checkDir(songinfo['savedir'])
-        checkDir(os.path.join(songinfo['savedir'], 'output'))
+        if os.path.exists(filename):
+            print('already downloaed, skip')
+            return True
         try:
             if songinfo['cover_url']:
                 cover_file = os.path.join(songinfo['savedir'], "%s - cover.jpg" % songinfo['album'])
@@ -35,7 +38,6 @@ class Downloader():
                         f.write(r.content)
                         f.close()
             is_success = False
-            filename = os.path.join(songinfo['savedir'], songinfo['savename']+'.'+songinfo['ext'])
             with closing(session.get(songinfo['download_url'], headers=headers, stream=True, verify=False)) as response:
                 total_size = int(response.headers['content-length'])
                 chunk_size = 1024
@@ -72,6 +74,7 @@ class Downloader():
                 ))
                 mp3.save(v2_version=3)
             if filename.endswith('m4a'):
+                checkDir(os.path.join(songinfo['savedir'], 'output'))
                 os.system("ffmpeg -i \"%s\" -i \"%s\" -map 0:0 -map 1:0 -metadata album=\"%s\" -metadata artist=\"%s\" -metadata title=\"%s\" -metadata track=\"%d/%d\" \"%s\"" %\
                         (filename, cover_file, songinfo['album'], songinfo['singers'], songinfo['songname'], songinfo['track'], songinfo['total'], os.path.join(songinfo['savedir'], 'output', songinfo['savename']+'.mp3')))
         except Exception as e:

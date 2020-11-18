@@ -62,8 +62,9 @@ class netease(Base):
         self.cracker = Cracker()
         self.__initialize()
 
-    def download_album(self, albumId):
+    def _get_album_songs(self, albumId):
         cfg = self.config.copy()
+        songinfos = []
         url = "http://music.163.com/api/v1/album/" + str(albumId)
         params = {
             'total': 'true',
@@ -95,23 +96,25 @@ class netease(Base):
             duration = int(item.get('dt', 0) / 1000)
             artistName = ','.join([s.get('name', '') for s in item.get('ar')])
             songName = item.get('name')
+            album = item.get('al', {}).get('name', '-')
             song = {
                 'source': self.source,
                 'songid': str(item['id']),
                 'singers': artistName,
                 'cover_url': item['al']['picUrl'],
-                'album': filterBadCharacter(item.get('al', {}).get('name', '-')),
+                'album': filterBadCharacter(album),
                 'track': item['no'],
                 'total': data['album']['size'],
                 'songname': filterBadCharacter(songName),
-                'savedir': cfg['savedir'],
+                'savedir': os.path.join(cfg['savedir'], filterBadCharacter(artistName) + ' - ' + filterBadCharacter(album)),
                 'savename': '%02d-%s - %s' % (item['no'], filterBadCharacter(artistName), filterBadCharacter(songName)),
                 'download_url': download_url,
                 'filesize': str(filesize),
                 'ext': ext,
                 'duration': seconds2hms(duration)
             }
-            self.download([song])
+            songinfos.append(song)
+        return songinfos
 
     '''歌曲搜索'''
     def search(self, keyword):
@@ -148,22 +151,23 @@ class netease(Base):
             duration = int(item.get('dt', 0) / 1000)
             artists = ','.join([s.get('name', '') for s in item.get('ar')])
             songname = item.get('name', '-')
+            album = item.get('al', {}).get('name', '-')
             songinfo = {
-                        'source': self.source,
-                        'songid': str(item['id']),
-                        'track': item['no'],
-                        'total': item['no'],
-                        'singers': artists,
-                        'album': filterBadCharacter(item.get('al', {}).get('name', '-')),
-                        'cover_url': item['al']['picUrl'],
-                        'songname': songname,
-                        'savedir': cfg['savedir'],
-                        'savename': '%s - %s' % (filterBadCharacter(artists), filterBadCharacter(songname)),
-                        'download_url': download_url,
-                        'filesize': str(filesize),
-                        'ext': ext,
-                        'duration': seconds2hms(duration)
-                    }
+                'source': self.source,
+                'songid': str(item['id']),
+                'track': item['no'],
+                'total': item['no'],
+                'singers': artists,
+                'album': filterBadCharacter(album),
+                'cover_url': item['al']['picUrl'],
+                'songname': songname,
+                'savedir': cfg['savedir'],
+                'savename': '%s - %s' % (filterBadCharacter(artists), filterBadCharacter(songname)),
+                'download_url': download_url,
+                'filesize': str(filesize),
+                'ext': ext,
+                'duration': seconds2hms(duration)
+            }
             songinfos.append(songinfo)
         return songinfos
     '''初始化'''

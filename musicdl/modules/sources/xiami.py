@@ -22,8 +22,9 @@ class xiami(Base):
         self.source = 'xiami'
         self.__initialize()
 
-    def download_album(self, albumId):
+    def _get_album_songs(self, albumId):
         cfg = self.config.copy()
+        songinfos = []
 
         token = self.__getToken()
         search_url = self.base_url.format(action=self.actions['getalbumdetail'])
@@ -45,6 +46,7 @@ class xiami(Base):
                 'album': filterBadCharacter(albumName),
                 'songname': filterBadCharacter(songName),
                 'savedir': cfg['savedir'],
+                'savedir': os.path.join(cfg['savedir'], filterBadCharacter(artistName) + ' - ' + filterBadCharacter(albumName)),
                 'savename': '%02d-%s - %s' % (track, filterBadCharacter(artistName), filterBadCharacter(songName)),
                 'download_url': '',
                 'filesize': 0,
@@ -59,7 +61,8 @@ class xiami(Base):
                     item['download_url'] = fileInfo['listenFile']
                     item['filesize'] = int(fileInfo['fileSize'])
                     item['duration'] = seconds2hms(int(fileInfo['length'])/1000)
-            self.download([item])
+            songinfos.append(item)
+        return songinfos
 
 
     '''歌曲搜索'''
