@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 '''
 Function:
     音乐下载器

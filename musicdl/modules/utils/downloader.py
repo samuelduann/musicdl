@@ -31,7 +31,7 @@ class Downloader():
             return True
         try:
             if songinfo['cover_url']:
-                cover_file = os.path.join(songinfo['savedir'], "%s - cover.jpg" % songinfo['album'])
+                cover_file = os.path.join(songinfo['savedir'], "%s - cover.jpg" % filterBadCharacter(songinfo['album']))
                 if not os.path.exists(cover_file):
                     with open(cover_file, 'wb') as f:
                         r = session.get(songinfo['cover_url'], headers=headers)
